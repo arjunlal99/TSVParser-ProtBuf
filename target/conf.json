@@ -1,0 +1,6 @@
+{
+  "inputDir": "/input",
+  "outputDir": "/output",
+  "outputFilename": "dhcp-log",
+  "fields": []
+}
