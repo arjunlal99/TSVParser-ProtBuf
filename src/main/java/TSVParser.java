@@ -31,6 +31,7 @@ import org.json.simple.JSONArray;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 
+
 public class TSVParser {
 
     private static final GroupFactory factory = new SimpleGroupFactory(MessageTypeParser.parseMessageType(
@@ -39,12 +40,15 @@ public class TSVParser {
                     "required BINARY uid;\n" +
                     "required BINARY id.orig_h;\n" +
                     "required BINARY id.orig_p;\n" +
-                    "required BINARY id.resp_h;\n" +
-                    "required BINARY id.resp_p;\n" +
-                    "required BINARY mac;\n" +
-                    "required BINARY assigned_ip;\n" +
-                    "required BINARY lease_time;\n" +
-                    "required BINARY trans_id;\n" +
+                   /*
+                    "optional BINARY id.resp_h;\n" +
+                    "optional BINARY id.resp_p;\n" +
+                    "optional BINARY mac;\n" +
+                    "optional BINARY assigned_ip;\n" +
+                    "optional BINARY lease_time;\n" +
+                    "optional BINARY trans_id;\n" +
+
+                    */
                     "}"
     ));
 
@@ -52,8 +56,51 @@ public class TSVParser {
 
         public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException{
             String line = value.toString();
-            String[] fields = line.split("\t");
+            String[] columns = line.split("\t");
             Group group = factory.newGroup();
+            Configuration conf = context.getConfiguration();
+       //     String fields = conf.get("path");
+
+            JSONParser jsonParser = new JSONParser();
+            try{
+                JSONArray fields = (JSONArray) jsonParser.parse(conf.get("fields"));
+                for(int i=0; i < fields.size(); i++){
+                    JSONObject field = (JSONObject) fields.get(i);
+                    group.append((String) field.get("name"), columns[Integer.parseInt((String)field.get("index"))]);
+                }
+            }
+            catch (ParseException e){
+                e.printStackTrace();
+            }
+
+/*
+            group.append("ts", columns[0]);
+            group.append("uid", columns[1]);
+            group.append("id.orig_h", columns[2]);
+            group.append("id.orig_p", columns[3]);
+*/
+/*
+
+            try(FileReader reader = new FileReader(path)){
+                Object obj = jsonParser.parse(reader);
+                JSONObject file = (JSONObject) obj;
+                JSONArray fields = (JSONArray) file.get("fields");
+
+                for(int i=0; i < fields.size(); i++){
+                    JSONObject field = (JSONObject) fields.get(i);
+                    group.append((String) field.get("name"), columns[(int)field.get("index")]);
+                }
+
+            }
+            catch (ParseException e){
+                e.printStackTrace();
+            }
+            catch ( IOException e) {
+                e.printStackTrace();
+            }
+
+*/
+            /*
             group.append("ts", fields[0]);
             group.append("uid", fields[1]);
             group.append("id.orig_h", fields[2]);
@@ -64,7 +111,7 @@ public class TSVParser {
             group.append("assigned_ip", fields[7]);
             group.append("lease_time", fields[8]);
             group.append("trans_id", fields[9]);
-
+            */
             context.write(null, group);
         }
 
@@ -95,6 +142,7 @@ public class TSVParser {
                 ConfParser.outputDir = file.get("outputDir").toString();
                 ConfParser.outputFilename = file.get("outputFilename").toString();
                 ConfParser.fields = (JSONArray) file.get("fields");
+             //   System.out.println(ConfParser.fields);
             }
             catch (FileNotFoundException e){
                 e.printStackTrace();
@@ -110,7 +158,9 @@ public class TSVParser {
 
     public static void main (String [] args) throws Exception{
         ConfParser confParser = new ConfParser(args[0]);
-        Job job = Job.getInstance(new Configuration(), "TSVParser");
+        Configuration conf = new Configuration();
+        conf.set("fields", String.valueOf(ConfParser.fields));
+        Job job = Job.getInstance(conf, "TSVParser");
         job.getConfiguration().set("mapreduce.output.basename", ConfParser.outputFilename);
         job.setJarByClass(TSVParser.class);
         job.setMapperClass(TSVParserMapper.class);
@@ -125,12 +175,14 @@ public class TSVParser {
                         "required BINARY uid;\n" +
                         "required BINARY id.orig_h;\n" +
                         "required BINARY id.orig_p;\n" +
-                        "required BINARY id.resp_h;\n" +
-                        "required BINARY id.resp_p;\n" +
-                        "required BINARY mac;\n" +
-                        "required BINARY assigned_ip;\n" +
-                        "required BINARY lease_time;\n" +
-                        "required BINARY trans_id;\n" +
+                        /*
+                        "optional BINARY id.resp_h;\n" +
+                        "optional BINARY id.resp_p;\n" +
+                        "optional BINARY mac;\n" +
+                        "optional BINARY assigned_ip;\n" +
+                        "optional BINARY lease_time;\n" +
+                        "optional BINARY trans_id;\n" +
+                        */
                         "}"
         ) );
 

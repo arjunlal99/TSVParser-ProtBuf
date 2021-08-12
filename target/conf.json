@@ -2,5 +2,24 @@
   "inputDir": "/input",
   "outputDir": "/output",
   "outputFilename": "dhcp-log",
-  "fields": []
+  "fields": [{
+    "name" : "ts",
+    "type" : "BINARY",
+    "index": "0"
+  },
+    {
+      "name" : "uid",
+      "type" : "BINARY",
+      "index" : "1"
+    },
+    {
+      "name" : "id.orig_h" ,
+      "type" : "BINARY",
+      "index" : "2"
+    },
+    {
+      "name" : "id.orig_p",
+      "type" : "BINARY",
+      "index" : "3"
+    }]
 }
