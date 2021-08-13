@@ -5,6 +5,7 @@ import java.io.IOException;
 import org.apache.parquet.Log;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.GroupFactory;
+import org.apache.parquet.example.data.simple.SimpleGroup;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
 import org.apache.parquet.hadoop.example.GroupWriteSupport;
 import org.apache.parquet.hadoop.example.ExampleInputFormat;
@@ -34,34 +35,36 @@ import org.json.simple.parser.ParseException;
 
 public class TSVParser {
 
-    private static final GroupFactory factory = new SimpleGroupFactory(MessageTypeParser.parseMessageType(
-            "message example{\n" +
-                    "required BINARY ts;\n" +
-                    "required BINARY uid;\n" +
-                    "required BINARY id.orig_h;\n" +
-                    "required BINARY id.orig_p;\n" +
-                   /*
-                    "optional BINARY id.resp_h;\n" +
-                    "optional BINARY id.resp_p;\n" +
-                    "optional BINARY mac;\n" +
-                    "optional BINARY assigned_ip;\n" +
-                    "optional BINARY lease_time;\n" +
-                    "optional BINARY trans_id;\n" +
 
-                    */
-                    "}"
-    ));
+
 
     public static class TSVParserMapper extends Mapper<LongWritable, Text, Void, Group>{
 
         public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException{
             String line = value.toString();
             String[] columns = line.split("\t");
-            Group group = factory.newGroup();
+            JSONParser jsonParser = new JSONParser();
             Configuration conf = context.getConfiguration();
+            String schema = "message example{\n";
+            try{
+                JSONArray fields = (JSONArray) jsonParser.parse(conf.get("fields"));
+                for(int i=0; i < fields.size(); i++){
+                    JSONObject field = (JSONObject) fields.get(i);
+                    schema = schema + "required " + (String)field.get("type")+ " " + (String) field.get("name")  +";\n";
+                }
+                schema = schema + "}";
+            }
+            catch (ParseException e){
+                e.printStackTrace();
+            }
+
+            GroupFactory factory = new SimpleGroupFactory(MessageTypeParser.parseMessageType(schema));
+            Group group = factory.newGroup();
        //     String fields = conf.get("path");
 
-            JSONParser jsonParser = new JSONParser();
+
+
+           // JSONParser jsonParser = new JSONParser();
             try{
                 JSONArray fields = (JSONArray) jsonParser.parse(conf.get("fields"));
                 for(int i=0; i < fields.size(); i++){
@@ -73,45 +76,6 @@ public class TSVParser {
                 e.printStackTrace();
             }
 
-/*
-            group.append("ts", columns[0]);
-            group.append("uid", columns[1]);
-            group.append("id.orig_h", columns[2]);
-            group.append("id.orig_p", columns[3]);
-*/
-/*
-
-            try(FileReader reader = new FileReader(path)){
-                Object obj = jsonParser.parse(reader);
-                JSONObject file = (JSONObject) obj;
-                JSONArray fields = (JSONArray) file.get("fields");
-
-                for(int i=0; i < fields.size(); i++){
-                    JSONObject field = (JSONObject) fields.get(i);
-                    group.append((String) field.get("name"), columns[(int)field.get("index")]);
-                }
-
-            }
-            catch (ParseException e){
-                e.printStackTrace();
-            }
-            catch ( IOException e) {
-                e.printStackTrace();
-            }
-
-*/
-            /*
-            group.append("ts", fields[0]);
-            group.append("uid", fields[1]);
-            group.append("id.orig_h", fields[2]);
-            group.append("id.orig_p", fields[3]);
-            group.append("id.resp_h", fields[4]);
-            group.append("id.resp_p", fields[5]);
-            group.append("mac", fields[6]);
-            group.append("assigned_ip", fields[7]);
-            group.append("lease_time", fields[8]);
-            group.append("trans_id", fields[9]);
-            */
             context.write(null, group);
         }
 
@@ -169,22 +133,15 @@ public class TSVParser {
         job.setOutputValueClass(Group.class);
         job.setOutputFormatClass(ExampleOutputFormat.class);
 
-        ExampleOutputFormat.setSchema(job,MessageTypeParser.parseMessageType(
-                "message example{\n" +
-                        "required BINARY ts;\n" +
-                        "required BINARY uid;\n" +
-                        "required BINARY id.orig_h;\n" +
-                        "required BINARY id.orig_p;\n" +
-                        /*
-                        "optional BINARY id.resp_h;\n" +
-                        "optional BINARY id.resp_p;\n" +
-                        "optional BINARY mac;\n" +
-                        "optional BINARY assigned_ip;\n" +
-                        "optional BINARY lease_time;\n" +
-                        "optional BINARY trans_id;\n" +
-                        */
-                        "}"
-        ) );
+        String schema =  "message example{\n";
+        JSONArray fields = (JSONArray) ConfParser.fields;
+        for(int i=0; i < fields.size(); i++){
+            JSONObject field = (JSONObject) fields.get(i);
+       //     schema = schema + "required " + "BINARY " + (String) field.get("name") + " (utf8)" +";\n";
+            schema = schema + "required " + (String)field.get("type")+ " " + (String) field.get("name")  +";\n";
+        }
+        schema = schema + "}";
+        ExampleOutputFormat.setSchema(job, MessageTypeParser.parseMessageType(schema));
 
         ExampleOutputFormat.setCompression(job, CompressionCodecName.UNCOMPRESSED);
 
